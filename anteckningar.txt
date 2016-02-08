@@ -1,0 +1,64 @@
+Installera arm-none-eabi-gdb
+Installera openocd
+
+java -jar SetupSTM32CubeMX-4.13.0.exe
+java -jar ./STM32CubeMX/STM32CubeMX
+
+Target Processor - ARM family cortex-m3
+Optimization -Os (eller -Og om debug)
+
+Cross ARM C Compiler
+Preprocessor - Defined Symbols
+STM32F103xB
+USE_HAL_DRIVER
+
+Includes - Include Paths
+"${ProjDirPath}/Drivers/CMSIS/Include"
+"${ProjDirPath}/Drivers/CMSIS/Device/ST/STM32F4xx/Include"
+"${ProjDirPath}/Drivers/STM32F4xx_HAL_Driver/Inc"
+"${ProjDirPath}/Inc"
+"${ProjDirPath}/Middlewares/ST/STM32_USB_Device_Library/Core/Inc"
+"${ProjDirPath}/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc"
+
+Cross ARM C Linker
+General - Script files
+"${ProjDirPath}/STM32F415RG.ld"
+Libraries - Libraries (-l): m (om math-funktioner används)
+Miscellaneous: Use newlib-nano
+Use float with nano printf (om behov finns, skapar stor hex-fil)
+Use float with nano scanf (om behov finns, skapar stor hex-fil)
+Other linker flags: --specs=nosys.specs
+
+sudo chmod 4755 /usr/bin/openocd (annars kan inte USB-porten öppnas)
+
+Byt namn på .s till .asm
+
+Exempel på OpenOCD-session:
+init
+reset init
+halt
+flash write_image erase blink.hex
+shutdown
+
+Skapa ny Workspace-profile med Tab size 2 (för att passa STM32CubeMX automatgenererade kod)
+(Properties - C/C++ General - Formatter - Enable project specific settings
+Edit
+Profile name: ST
+Tab size: 2
+
+Byt ut -specs=nosys.specs mot -specs=rdimon.specs (observera att utskrift till debugger kan vara seg och är dessutom blockerande)
+Lägg till i koden:
+extern void initialise_monitor_handles(void);
+initialise_monitor_handles();
+printf("Hejsan!\n");
+
+Skriva till USB:
+#include "usbd_cdc.h"
+if ((hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED) && (hcdc->TxState == 0)) {
+		USBD_CDC_SetTxBuffer(&hUsbDeviceFS, pBuffer, size);
+		USBD_CDC_TransmitPacket(&hUsbDeviceFS);
+	}
+
+Skriva till seriell:
+HAL_UART_Transmit(&huart1, pBuffer, size, 200);
+
