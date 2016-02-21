@@ -46,6 +46,7 @@
 I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
@@ -57,6 +58,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -65,8 +67,11 @@ static void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN 0 */
 volatile uint8_t newData = 0;
+volatile uint8_t rcRawData[16];
+volatile uint8_t rcCounter = 0;
+volatile uint16_t rcData[16];
 
-int _write (int fd, char *pBuffer, int size)
+int _write(int fd, char *pBuffer, int size)
 {
 	HAL_UART_Transmit(&huart1, pBuffer, size, 200);
 
@@ -152,6 +157,42 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	newData = 1;
 }
 
+void sysTickMain(void) {
+	static uint16_t prevRxXferCount;
+	uint8_t i;
+
+	if (prevRxXferCount != huart2.RxXferCount) {
+		// Nollställ rcCounter om nytt tecken tagits emot.
+		rcCounter = 0;
+		prevRxXferCount = huart2.RxXferCount;
+	}
+
+	if (rcCounter == 5) {
+		// Avbrott mer än 5 ms. Starta ny mottagning.
+		__HAL_UART_FLUSH_DRREGISTER(&huart2);
+		HAL_UART_Receive_IT(&huart2, (uint8_t *)rcRawData, 16);
+	}
+
+	if (rcCounter == 20) {
+		// Timeout!
+		for(i = 0; i < 16; i++) rcData[i] = 0;
+
+		__HAL_UART_FLUSH_DRREGISTER(&huart2);
+		HAL_UART_Receive_IT(&huart2, (uint8_t *)rcRawData, 16);
+	}
+	if (rcCounter < 255) rcCounter++;
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	uint8_t i;
+	if (huart == &huart2) {
+		// Tolka data
+		for(i = 0; i < 7; i++) {
+			rcData[(rcRawData[(i * 2) + 2] >> 3) & 0x0F] = ((rcRawData[(i * 2) + 2] & 0x07) * 0xFF) + rcRawData[(i * 2) + 3];
+		}
+	}
+}
+
 /* USER CODE END 0 */
 
 int main(void)
@@ -181,6 +222,7 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
 
   /* USER CODE BEGIN 2 */
   //initialise_monitor_handles();
@@ -222,8 +264,8 @@ int main(void)
 					pitch = atan(gx / sqrt(gy*gy + gz*gz));
 					roll = atan(gy / sqrt(gx*gx + gz*gz));
 
-  				printf("Yaw: %d Pitch: %d Roll: %d\r\n", (int16_t)(yaw * (360.0 / M_PI)), (int16_t)(pitch * (180.0 / M_PI)), (int16_t)(roll * (180.0 / M_PI)));
-  				HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+  				printf("Yaw: %d Pitch: %d Roll: %d Throttle: %d\r\n", (int16_t)(yaw * (360.0 / M_PI)), (int16_t)(pitch * (180.0 / M_PI)), (int16_t)(roll * (180.0 / M_PI)), rcData[0]);
+  				//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
   			}
 
   			//if ((hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED) && (hUsbDeviceFS.ep0_state != USBD_EP0_STATUS_IN)) HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0); else HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1);
@@ -296,6 +338,22 @@ void MX_USART1_UART_Init(void)
   huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart1.Init.OverSampling = UART_OVERSAMPLING_16;
   HAL_UART_Init(&huart1);
+
+}
+
+/* USART2 init function */
+void MX_USART2_UART_Init(void)
+{
+
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  HAL_UART_Init(&huart2);
 
 }
 
