@@ -238,19 +238,21 @@ int main(void)
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
 
+  // 125-250 us, 24 MHz, 125 us = 3000, 250 us = 6000
+
   while(1) {
   	  htim2.Instance->EGR = TIM_EGR_UG;
-  	  while (htim2.Instance->EGR & TIM_EGR_UG);
-  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 366);
-  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 732);
-  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 1098);
+  	  //while (htim2.Instance->EGR & TIM_EGR_UG); // Verkar inte behövas om timer clock är dubbelt så snabb som peripheral clock?
+  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, ((rcData[0] / 2) * 3) + 2811);
+  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 4000);
+  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 5000);
   	  htim2.Instance->EGR = TIM_EGR_UG;
-  	  while (htim2.Instance->EGR & TIM_EGR_UG);
+  	  //while (htim2.Instance->EGR & TIM_EGR_UG);
   	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
   	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
   	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
 
-    	HAL_Delay(5000);
+    	HAL_Delay(10); // Inte mer än 10 ms mellan pulser, annars verkar inte BLHeli starta upp
   }
 
   HAL_Delay(200);
@@ -322,8 +324,8 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
   HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0);
 
   HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
@@ -360,7 +362,7 @@ void MX_TIM2_Init(void)
   TIM_OC_InitTypeDef sConfigOC;
 
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 65535;
+  htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 65535;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
