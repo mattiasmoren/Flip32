@@ -1,0 +1,54 @@
+PWM Generation
+
+Prescaler 0
+Counter Period 65535
+
+PWM mode 1
+Pulse 0
+Fast mode Disable
+CH Polarity High
+
+USART1 (debug) 115200, 8, N, 1
+USART2 (RX) 115200, 8, N, 1, USART2 global interrupt
+
+I2C1 Standard mode, 100000 Hz, 7-bit
+
+System tick timer interrupt
+EXT1 line0 interrupt
+
+
+
+
+
+Old angle calculations:
+/*qw = quat[0];
+					qx = quat[1];
+					qy = quat[2];
+					qz = quat[3];
+
+					gx = 2 * (qx*qz - qw*qy);
+					gy = 2 * (qw*qx + qy*qz);
+					gz = qw*qw - qx*qx - qy*qy + qz*qz;
+
+					yaw = atan2(2*qx*qy - 2*qw*qz, 2*qw*qw + 2*qx*qx - 1);
+					pitch = atan(gx / sqrt(gy*gy + gz*gz));
+					roll = atan(gy / sqrt(gx*gx + gz*gz));*/
+
+  				/*quat[0] = quat[0] >> 16;
+  				quat[1] = quat[1] >> 16;
+  				quat[2] = quat[2] >> 16;
+  				quat[3] = quat[3] >> 16;
+
+  				if (quat[0] > 32767) quat[0] -= 65536;
+  				if (quat[1] > 32767) quat[1] -= 65536;
+  				if (quat[2] > 32767) quat[2] -= 65536;
+  				if (quat[3] > 32767) quat[3] -= 65536;
+
+  				qw = ((double) quat[0]) / 16384.0;
+  				qx = ((double) quat[1]) / 16384.0;
+  				qy = ((double) quat[2]) / 16384.0;
+  				qz = ((double) quat[3]) / 16384.0;
+
+  				roll = atan2(2.0*(qy*qz + qw*qx), qw*qw - qx*qx - qy*qy + qz*qz);
+  				pitch = -1.0 * asin(-2.0*(qx*qz - qw*qy));
+  				yaw = atan2(2.0*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);*/
