@@ -270,7 +270,7 @@ int main(void)
   mpu_set_sensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
   dmp_load_motion_driver_firmware();
   dmp_set_orientation(inv_orientation_matrix_to_scalar(gyro_orientation));
-  dmp_enable_feature(DMP_FEATURE_6X_LP_QUAT);
+  dmp_enable_feature(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL);
   dmp_set_fifo_rate(10);
   mpu_set_dmp_state(1);
 
