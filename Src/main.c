@@ -43,9 +43,9 @@
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c2;
 
-TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -58,10 +58,10 @@ UART_HandleTypeDef huart2;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_TIM2_Init(void);
+static void MX_I2C2_Init(void);
+static void MX_TIM4_Init(void);
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
                 
@@ -132,11 +132,11 @@ static signed char gyro_orientation[9] = {-1, 0, 0,
                                            0, 0, 1};
 
 int i2c_write(unsigned char slave_addr, unsigned char reg_addr, unsigned char length, unsigned char const *data) {
-	return HAL_I2C_Mem_Write(&hi2c1, slave_addr << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, (unsigned char *) data, length, 200);
+	return HAL_I2C_Mem_Write(&hi2c2, slave_addr << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, (unsigned char *) data, length, 200);
 }
 
 int i2c_read(unsigned char slave_addr, unsigned char reg_addr, unsigned char length, unsigned char *data) {
-	return HAL_I2C_Mem_Read(&hi2c1, slave_addr << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, data, length, 200);
+	return HAL_I2C_Mem_Read(&hi2c2, slave_addr << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, data, length, 200);
 }
 
 void delay_ms(unsigned long num_ms) {
@@ -160,7 +160,7 @@ void __no_operation() {
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	newData = 1;
+	if (GPIO_Pin == GPIO_PIN_13) newData = 1;
 }
 
 void sysTickMain(void) {
@@ -209,7 +209,7 @@ int main(void)
 	unsigned char more;
 	long quat[4];
 	double pitch, yaw, roll;
-	float qx, qy, qz, qw, gx, gy, gz;
+	double qx, qy, qz, qw;
 	char t = 'B';
 
 	//extern void initialise_monitor_handles(void);
@@ -226,34 +226,43 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
-  MX_TIM2_Init();
+  MX_I2C2_Init();
+  MX_TIM4_Init();
 
   /* USER CODE BEGIN 2 */
   //initialise_monitor_handles();
 
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
+  /*while(1) {
+  	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_4);
+  	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+  	HAL_Delay(500);
+  }*/
+
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
 
   // 125-250 us, 24 MHz, 125 us = 3000, 250 us = 6000
 
-  while(1) {
-  	  htim2.Instance->EGR = TIM_EGR_UG;
-  	  //while (htim2.Instance->EGR & TIM_EGR_UG); // Verkar inte behövas om timer clock är dubbelt så snabb som peripheral clock?
-  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, ((rcData[0] / 2) * 3) + 2811);
-  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 4000);
-  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 5000);
-  	  htim2.Instance->EGR = TIM_EGR_UG;
-  	  //while (htim2.Instance->EGR & TIM_EGR_UG);
-  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
-  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
-  	  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0);
+  /*while(1) {
+  	  htim4.Instance->EGR = TIM_EGR_UG;
+  	  //while (htim4.Instance->EGR & TIM_EGR_UG); // Verkar inte behövas om timer clock är dubbelt så snabb som peripheral clock?
+  	  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, ((rcData[0] / 2) * 3) + 2811);
+  	  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, 4000);
+  	  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 5000);
+  	  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 5000);
+  	  htim4.Instance->EGR = TIM_EGR_UG;
+  	  //while (htim4.Instance->EGR & TIM_EGR_UG);
+  	  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, 0);
+  	  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, 0);
+  	  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_3, 0);
+  	  __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_4, 0);
 
     	HAL_Delay(10); // Inte mer än 10 ms mellan pulser, annars verkar inte BLHeli starta upp
-  }
+  }*/
 
   HAL_Delay(200);
 
@@ -277,23 +286,16 @@ int main(void)
   	if (newData) {
   			dmp_read_fifo(NULL, NULL, quat, NULL, &sensors, &more);
   			if (sensors == INV_WXYZ_QUAT) {
-  				//if (quat[2] < 0) HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1); else HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
+  				qw = ((double) quat[0]) / 1073741824.0;
+  				qx = ((double) quat[1]) / 1073741824.0;
+  				qy = ((double) quat[2]) / 1073741824.0;
+  				qz = ((double) quat[3]) / 1073741824.0;
 
-  				qw = quat[0];
-					qx = quat[1];
-					qy = quat[2];
-					qz = quat[3];
+  				roll = atan2(2.0*(qy*qz + qw*qx), qw*qw - qx*qx - qy*qy + qz*qz);
+  				pitch = asin(2.0*(qx*qz - qw*qy));
+  				yaw = atan2(2.0*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);
 
-					gx = 2 * (qx*qz - qw*qy);
-					gy = 2 * (qw*qx + qy*qz);
-					gz = qw*qw - qx*qx - qy*qy + qz*qz;
-
-					yaw = atan2(2*qx*qy - 2*qw*qz, 2*qw*qw + 2*qx*qx - 1);
-					pitch = atan(gx / sqrt(gy*gy + gz*gz));
-					roll = atan(gy / sqrt(gx*gx + gz*gz));
-
-  				printf("Yaw: %d Pitch: %d Roll: %d Throttle: %d\r\n", (int16_t)(yaw * (360.0 / M_PI)), (int16_t)(pitch * (180.0 / M_PI)), (int16_t)(roll * (180.0 / M_PI)), rcData[0]);
-  				//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+  				printf("Yaw: %d Pitch: %d Roll: %d Throttle: %d\r\n", (int16_t)(yaw * (180.0 / M_PI)), (int16_t)(pitch * (180.0 / M_PI)), (int16_t)(roll * (180.0 / M_PI)), rcData[0]);
   			}
 
   			//if ((hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED) && (hUsbDeviceFS.ep0_state != USBD_EP0_STATUS_IN)) HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0); else HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1);
@@ -312,11 +314,11 @@ void SystemClock_Config(void)
   RCC_OscInitTypeDef RCC_OscInitStruct;
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
 
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = 16;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL6;
   HAL_RCC_OscConfig(&RCC_OscInitStruct);
 
@@ -336,60 +338,60 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
-/* I2C1 init function */
-void MX_I2C1_Init(void)
+/* I2C2 init function */
+void MX_I2C2_Init(void)
 {
 
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
-  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLED;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLED;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLED;
-  HAL_I2C_Init(&hi2c1);
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.ClockSpeed = 100000;
+  hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLED;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLED;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLED;
+  HAL_I2C_Init(&hi2c2);
 
 }
 
-/* TIM2 init function */
-void MX_TIM2_Init(void)
+/* TIM4 init function */
+void MX_TIM4_Init(void)
 {
 
   TIM_ClockConfigTypeDef sClockSourceConfig;
   TIM_MasterConfigTypeDef sMasterConfig;
   TIM_OC_InitTypeDef sConfigOC;
 
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 65535;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  HAL_TIM_Base_Init(&htim2);
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 0;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 65535;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  HAL_TIM_Base_Init(&htim4);
 
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig);
+  HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig);
 
-  HAL_TIM_PWM_Init(&htim2);
+  HAL_TIM_PWM_Init(&htim4);
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig);
+  HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig);
 
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1);
+  HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1);
 
-  HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2);
+  HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2);
 
-  HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_3);
+  HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_3);
 
-  HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_4);
+  HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_4);
 
-  HAL_TIM_MspPostInit(&htim2);
+  HAL_TIM_MspPostInit(&htim4);
 
 }
 
@@ -438,29 +440,28 @@ void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct;
 
   /* GPIO Ports Clock Enable */
-  __GPIOC_CLK_ENABLE();
   __GPIOD_CLK_ENABLE();
   __GPIOA_CLK_ENABLE();
   __GPIOB_CLK_ENABLE();
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : PC13 */
+  /*Configure GPIO pin : PB13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PA0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB3 PB4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3|GPIO_PIN_4, GPIO_PIN_RESET);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 

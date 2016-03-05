@@ -33,6 +33,9 @@ sudo chmod 4755 /usr/bin/openocd (annars kan inte USB-porten öppnas)
 
 Byt namn på .s till .asm
 
+openocd -f interface/stlink-v2.cfg -f target/stm32f1x.cfg
+telnet localhost 4444
+
 Exempel på OpenOCD-session:
 init
 reset init
