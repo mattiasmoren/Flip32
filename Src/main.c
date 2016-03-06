@@ -211,6 +211,8 @@ int main(void)
 	double pitch, yaw, roll;
 	double qx, qy, qz, qw;
 	char t = 'B';
+	uint16_t count = 0, count2 = 0;
+	uint32_t oldTick;
 
 	//extern void initialise_monitor_handles(void);
 
@@ -234,7 +236,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   //initialise_monitor_handles();
 
-  /*while(1) {
+  /* while(1) {
   	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_4);
   	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
   	HAL_Delay(500);
@@ -271,7 +273,7 @@ int main(void)
   dmp_load_motion_driver_firmware();
   dmp_set_orientation(inv_orientation_matrix_to_scalar(gyro_orientation));
   dmp_enable_feature(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL);
-  dmp_set_fifo_rate(10);
+  dmp_set_fifo_rate(200);
   mpu_set_dmp_state(1);
 
   /* USER CODE END 2 */
@@ -286,6 +288,7 @@ int main(void)
   	if (newData) {
   			dmp_read_fifo(NULL, NULL, quat, NULL, &sensors, &more);
   			if (sensors == INV_WXYZ_QUAT) {
+  				oldTick = HAL_GetTick();
   				qw = ((double) quat[0]) / 1073741824.0;
   				qx = ((double) quat[1]) / 1073741824.0;
   				qy = ((double) quat[2]) / 1073741824.0;
@@ -295,7 +298,17 @@ int main(void)
   				pitch = asin(2.0*(qx*qz - qw*qy));
   				yaw = atan2(2.0*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);
 
-  				printf("Yaw: %d Pitch: %d Roll: %d Throttle: %d\r\n", (int16_t)(yaw * (180.0 / M_PI)), (int16_t)(pitch * (180.0 / M_PI)), (int16_t)(roll * (180.0 / M_PI)), rcData[0]);
+  				oldTick = HAL_GetTick() - oldTick;
+
+  				count++;
+
+  				if (count > 200) {
+  					//printf("%d\r\n", count2);
+  					printf("Yaw: %d Pitch: %d Roll: %d Throttle: %d Speed: %d\r\n", (int16_t)(yaw * (180.0 / M_PI)), (int16_t)(pitch * (180.0 / M_PI)), (int16_t)(roll * (180.0 / M_PI)), rcData[0], oldTick);
+  					count = 0;
+  					//count2++;
+  				}
+  				//printf("Yaw: %d Pitch: %d Roll: %d Throttle: %d\r\n", (int16_t)(yaw * (180.0 / M_PI)), (int16_t)(pitch * (180.0 / M_PI)), (int16_t)(roll * (180.0 / M_PI)), rcData[0]);
   			}
 
   			//if ((hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED) && (hUsbDeviceFS.ep0_state != USBD_EP0_STATUS_IN)) HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0); else HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1);
@@ -314,21 +327,21 @@ void SystemClock_Config(void)
   RCC_OscInitTypeDef RCC_OscInitStruct;
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
 
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = 16;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL6;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL8;
   HAL_RCC_OscConfig(&RCC_OscInitStruct);
 
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
-  HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0);
+  HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
 
   HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
 
@@ -343,7 +356,7 @@ void MX_I2C2_Init(void)
 {
 
   hi2c2.Instance = I2C2;
-  hi2c2.Init.ClockSpeed = 100000;
+  hi2c2.Init.ClockSpeed = 400000;
   hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c2.Init.OwnAddress1 = 0;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
