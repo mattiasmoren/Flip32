@@ -76,6 +76,9 @@ volatile uint8_t newData = 0;
 volatile uint8_t rcRawData[16];
 volatile uint8_t rcCounter = 0;
 volatile uint16_t rcData[16];
+float motors[4] = {0.0, 0.0, 0.0, 0.0}; // 0-100 %
+float rc[4]; // throttle 0-100 %, -50-50 %
+float attitude[3]; //
 
 int _write(int fd, char *pBuffer, int size)
 {
@@ -242,6 +245,7 @@ int main(void)
   	HAL_Delay(500);
   }*/
 
+  /* Start all four timer channels for one shot generation */
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
@@ -266,14 +270,16 @@ int main(void)
     	HAL_Delay(10); // Inte mer än 10 ms mellan pulser, annars verkar inte BLHeli starta upp
   }*/
 
+  /* Delay to allow time for sensors to start up */
   HAL_Delay(200);
 
+  /* Initialization of MPU6050 */
   mpu_init(NULL);
   mpu_set_sensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
   dmp_load_motion_driver_firmware();
   dmp_set_orientation(inv_orientation_matrix_to_scalar(gyro_orientation));
   dmp_enable_feature(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_GYRO_CAL);
-  dmp_set_fifo_rate(200);
+  dmp_set_fifo_rate(200); // 200 Hz is maximum sample rate with DMP
   mpu_set_dmp_state(1);
 
   /* USER CODE END 2 */
@@ -289,6 +295,8 @@ int main(void)
   			dmp_read_fifo(NULL, NULL, quat, NULL, &sensors, &more);
   			if (sensors == INV_WXYZ_QUAT) {
   				oldTick = HAL_GetTick();
+
+  				/* Calculate roll, pitch and yaw */
   				qw = ((double) quat[0]) / 1073741824.0;
   				qx = ((double) quat[1]) / 1073741824.0;
   				qy = ((double) quat[2]) / 1073741824.0;
